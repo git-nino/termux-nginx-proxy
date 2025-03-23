@@ -1,45 +1,39 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# Update & Upgrade Termux Packages
-echo "[+] Updating Termux packages..."
-pkg update -y && pkg upgrade -y
 
-# Install NGINX
-echo "[+] Installing NGINX..."
+yes | pkg update -y && yes | pkg upgrade -y
+
 pkg install nginx -y
 
-# Create NGINX Reverse Proxy Config
-echo "[+] Configuring NGINX Reverse Proxy..."
+
 mkdir -p $PREFIX/etc/nginx/sites-enabled
 
 cat > $PREFIX/etc/nginx/sites-enabled/reverse-proxy.conf <<EOF
 server {
     listen 8080;
-    server_name 192.168.200.100;
+    server_name 10.10.10.187;
 
     location / {
-        proxy_pass http://192.168.200.1:80;
+        proxy_pass http://192.168.1.1:80/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+
+        # Fix incorrect redirects from backend
+#        proxy_redirect http://192.168.200.100/ http://192.168.200.1/;
+        proxy_redirect http://10.10.10.187/ http://192.168.1.1/;
     }
 }
 EOF
 
-# Link configuration to main nginx.conf
-echo "[+] Linking configuration..."
-mkdir -p $PREFIX/var/log/nginx
-sed -i '/http {/a\    include '"$PREFIX"'/etc/nginx/sites-enabled/*;' $PREFIX/etc/nginx/nginx.conf
+sed -i '/http {/a \    server_names_hash_bucket_size 64;' $PREFIX/etc/nginx/nginx.conf
 
-# Check & Restart NGINX
-echo "[+] Testing NGINX configuration..."
-nginx -t
+grep -q "include $PREFIX/etc/nginx/sites-enabled/*;" $PREFIX/etc/nginx/nginx.conf || \
+sed -i '/http *{/a\    include '"$PREFIX"'/etc/nginx/sites-enabled/*;' $PREFIX/etc/nginx/nginx.conf
 
-if [ $? -eq 0 ]; then
-    echo "[+] Restarting NGINX..."
-    nginx
-    echo "[+] Reverse Proxy Deployed Successfully!"
-else
-    echo "[!] Error in NGINX Configuration!"
-    cat $PREFIX/var/log/nginx/error.log
-fi
+
+nginx -s stop
+
+
+nginx
+
