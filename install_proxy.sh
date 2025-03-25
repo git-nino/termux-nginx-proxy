@@ -10,7 +10,7 @@ mkdir -p $PREFIX/etc/nginx/sites-enabled
 
 cat > $PREFIX/etc/nginx/sites-enabled/reverse-proxy.conf <<EOF
 server {
-    listen 8000;
+    listen 8080;
     server_name 10.10.10.132;
 
     location / {
